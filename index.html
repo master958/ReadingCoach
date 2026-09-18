@@ -6,6 +6,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
 <title>책친구 코치</title>
+<script>
+  // 저장된 테마(라이트/다크)를 화면이 그려지기 전에 적용한다. 값이 없으면 기기 설정을 따른다.
+  try { var t = JSON.parse(localStorage.getItem('bcc_settings') || '{}').theme; if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
 <style>
   :root {
     --bg: #fbf7f0;
@@ -21,7 +25,39 @@
     --danger-soft: #fbe9e7;
     --coach: #eef4f2;
     --student: #fff0d6;
+    --on-brand: #ffffff;
+    --input-bg: #ffffff;
+    --quote-bg: #faf6ee;
+    --badge-doing-bg: #fff0d6;
+    --badge-doing-fg: #8a5a00;
+    --toast-bg: #2b2a28;
+    --toast-fg: #ffffff;
+    --overlay: rgba(40,30,20,0.55);
     --radius: 18px;
+    color-scheme: light;
+  }
+  /* 다크 팔레트: 기기 설정이 다크이거나(수동으로 라이트를 고르지 않은 경우), 수동으로 다크를 고른 경우 */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1c1a17; --card: #26231f; --ink: #ece6da; --muted: #a8a195; --line: #3a3630;
+      --brand: #4fae97; --brand-dark: #9ddcc9; --brand-soft: #22403a;
+      --accent: #f4a340; --danger: #e5766c; --danger-soft: #3f2522;
+      --coach: #2c3431; --student: #3d321f;
+      --on-brand: #0f1f1a; --input-bg: #1f1d19; --quote-bg: #2b2823;
+      --badge-doing-bg: #3d321f; --badge-doing-fg: #f2c46f;
+      --toast-bg: #ece6da; --toast-fg: #1c1a17; --overlay: rgba(0,0,0,0.65);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1c1a17; --card: #26231f; --ink: #ece6da; --muted: #a8a195; --line: #3a3630;
+    --brand: #4fae97; --brand-dark: #9ddcc9; --brand-soft: #22403a;
+    --accent: #f4a340; --danger: #e5766c; --danger-soft: #3f2522;
+    --coach: #2c3431; --student: #3d321f;
+    --on-brand: #0f1f1a; --input-bg: #1f1d19; --quote-bg: #2b2823;
+    --badge-doing-bg: #3d321f; --badge-doing-fg: #f2c46f;
+    --toast-bg: #ece6da; --toast-fg: #1c1a17; --overlay: rgba(0,0,0,0.65);
+    color-scheme: dark;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink);
@@ -42,6 +78,7 @@
   header .logo span { margin-right: 6px; }
   .icon-btn { background: var(--card); border: 1px solid var(--line); border-radius: 999px;
     min-height: 48px; padding: 8px 16px; cursor: pointer; }
+  header .actions { display: flex; gap: 8px; }
 
   main { max-width: 760px; margin: 0 auto; padding: 16px 16px 40px; }
   .screen { display: none; }
@@ -52,7 +89,7 @@
 
   .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px;
     min-height: 56px; padding: 12px 22px; border-radius: 14px; border: 2px solid transparent;
-    background: var(--brand); color: #fff; font-weight: 700; font-size: 1.05rem; cursor: pointer;
+    background: var(--brand); color: var(--on-brand); font-weight: 700; font-size: 1.05rem; cursor: pointer;
     touch-action: manipulation; user-select: none; }
   .btn:active { transform: translateY(1px); }
   .btn:disabled { opacity: 0.5; cursor: default; }
@@ -67,7 +104,7 @@
   label.field { display: block; font-weight: 700; margin: 14px 0 6px; }
   input[type=text], input[type=password], textarea {
     width: 100%; padding: 14px; border: 2px solid var(--line); border-radius: 14px;
-    background: #fff; font-size: 1.05rem; outline: none; }
+    background: var(--input-bg); font-size: 1.05rem; outline: none; }
   input:focus, textarea:focus { border-color: var(--brand); }
   textarea { min-height: 140px; resize: vertical; }
   .hint { font-size: 0.9rem; color: var(--muted); margin-top: 6px; }
@@ -86,13 +123,13 @@
   .list-item .meta { color: var(--muted); font-size: 0.9rem; margin-top: 2px; }
   .badge { display: inline-block; font-size: 0.8rem; padding: 2px 10px; border-radius: 999px;
     background: var(--brand-soft); color: var(--brand-dark); margin-left: 6px; }
-  .badge.doing { background: #fff0d6; color: #8a5a00; }
+  .badge.doing { background: var(--badge-doing-bg); color: var(--badge-doing-fg); }
   .empty { color: var(--muted); text-align: center; padding: 20px; }
 
   .tabs { display: flex; gap: 8px; margin-bottom: 12px; }
   .tab { flex: 1; min-height: 56px; border-radius: 14px; border: 2px solid var(--line);
     background: var(--card); font-weight: 700; cursor: pointer; font-size: 1rem; }
-  .tab.on { background: var(--brand); color: #fff; border-color: var(--brand); }
+  .tab.on { background: var(--brand); color: var(--on-brand); border-color: var(--brand); }
 
   .chat { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
     padding: 14px; min-height: 320px; max-height: 58vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
@@ -115,18 +152,18 @@
   .stat .num { font-size: 2rem; font-weight: 800; color: var(--brand-dark); }
   .stat .lab { font-size: 0.9rem; color: var(--muted); }
 
-  .quote { background: #faf6ee; border-left: 4px solid var(--accent); padding: 10px 14px; border-radius: 8px; white-space: pre-wrap; }
+  .quote { background: var(--quote-bg); border-left: 4px solid var(--accent); padding: 10px 14px; border-radius: 8px; white-space: pre-wrap; }
 
   .keywrap { display: flex; gap: 8px; }
   .keywrap input { flex: 1; }
   .keywrap .btn { min-width: 72px; }
 
-  .modal-bg { position: fixed; inset: 0; background: rgba(40,30,20,0.55); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 20; }
+  .modal-bg { position: fixed; inset: 0; background: var(--overlay); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 20; }
   .modal-bg.show { display: flex; }
   .modal { background: var(--card); border-radius: 22px; padding: 24px; max-width: 520px; width: 100%; }
   .modal ul { padding-left: 22px; margin: 8px 0 16px; }
 
-  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink); color: #fff;
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--toast-bg); color: var(--toast-fg);
     padding: 12px 20px; border-radius: 999px; font-size: 0.95rem; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 30; max-width: 90vw; text-align: center; }
   .toast.show { opacity: 1; }
   .sr { position: absolute; left: -9999px; }
@@ -136,7 +173,10 @@
 <body>
 <header>
   <button class="logo" id="btn-logo" aria-label="홈으로"><span>📖</span>책친구 코치</button>
-  <button class="icon-btn" id="btn-admin">⚙️ 관리자</button>
+  <div class="actions">
+    <button class="icon-btn" id="btn-theme" aria-label="라이트/다크 모드 바꾸기">🌙 다크</button>
+    <button class="icon-btn" id="btn-admin">⚙️ 관리자</button>
+  </div>
 </header>
 
 <main>
@@ -456,7 +496,7 @@ function buildSystemPrompt(session, mode, ctx) {
 }
 
 // ===== 저장 =====
-var settings = { apiKey: '', gradeBand: '', noticeSeen: false };
+var settings = { apiKey: '', gradeBand: '', noticeSeen: false, theme: '' }; // theme: '' = 기기 설정 따름, 'light' | 'dark'
 var sessions = [];
 function loadStore() {
   try { var s = JSON.parse(localStorage.getItem(STORE_SETTINGS) || '{}'); if (s && typeof s === 'object') settings = Object.assign(settings, s); } catch (e) {}
@@ -562,6 +602,23 @@ function substantiveTurns(chat) { return chat.filter(function (m) { return m.rol
 var PII_RE = /(0\d{1,2}[-\s.]?\d{3,4}[-\s.]?\d{4})|([\w.+-]+@[\w-]+\.[\w.]+)/;
 var CRISIS_RE = /(죽고\s*싶|자살|자해|죽어\s*버리|살기\s*싫|사라지고\s*싶)/;
 var CRISIS_TEXT = '그 말을 해 줘서 고마워. 지금 마음이 많이 무거운 것 같아. 이건 책보다 훨씬 중요한 이야기야. 선생님이나 부모님처럼 믿을 수 있는 어른에게 지금 꼭 이야기해 줘. 혼자 견디지 않아도 돼.';
+
+// ===== 라이트/다크 모드 =====
+function effectiveTheme() {
+  if (settings.theme === 'light' || settings.theme === 'dark') return settings.theme;
+  return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+}
+function applyTheme() {
+  var root = document.documentElement;
+  if (settings.theme === 'light' || settings.theme === 'dark') root.setAttribute('data-theme', settings.theme);
+  else root.removeAttribute('data-theme');
+  var dark = effectiveTheme() === 'dark';
+  $('btn-theme').textContent = dark ? '☀️ 라이트' : '🌙 다크';
+}
+function toggleTheme() {
+  settings.theme = effectiveTheme() === 'dark' ? 'light' : 'dark';
+  saveSettings(); applyTheme();
+}
 
 // ===== 홈 =====
 function renderHome() {
@@ -866,6 +923,8 @@ function wipeAll() {
 function bind() {
   $('btn-logo').onclick = function () { renderHome(); showScreen('screen-home'); };
   $('btn-admin').onclick = openAdmin;
+  $('btn-theme').onclick = toggleTheme;
+  if (window.matchMedia) { try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme); } catch (e) {} }
   $('btn-new').onclick = openRecord;
   $('rec-summary').oninput = updateSentenceCount;
   $('btn-rec-back').onclick = function () { renderHome(); showScreen('screen-home'); };
@@ -894,6 +953,7 @@ function bind() {
 function init() {
   loadStore();
   bind();
+  applyTheme();
   renderHome();
   showScreen('screen-home');
   if (!settings.noticeSeen) $('modal-notice').classList.add('show');
