@@ -1,0 +1,904 @@
+<!-- 책친구 코치: 학생이 읽은 책을 바탕으로 AI 코치와 대화하며 생각을 깊게 하는 단일 파일 독서 코치 웹앱 (HTML+CSS+JS, 저장은 브라우저 localStorage만 사용) -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<title>책친구 코치</title>
+<style>
+  :root {
+    --bg: #fbf7f0;
+    --card: #ffffff;
+    --ink: #2b2a28;
+    --muted: #6b675f;
+    --line: #e6dfd3;
+    --brand: #2f7d6d;
+    --brand-dark: #245f53;
+    --brand-soft: #e3f1ec;
+    --accent: #f4a340;
+    --danger: #c9463d;
+    --danger-soft: #fbe9e7;
+    --coach: #eef4f2;
+    --student: #fff0d6;
+    --radius: 18px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink);
+    font-family: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", "Pretendard", system-ui, sans-serif;
+    font-size: 19px; line-height: 1.55; -webkit-text-size-adjust: 100%; }
+  button, input, textarea { font: inherit; color: inherit; }
+  h1, h2, h3 { margin: 0 0 12px; line-height: 1.3; }
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.3rem; }
+  h3 { font-size: 1.1rem; }
+  p { margin: 0 0 12px; }
+  .muted { color: var(--muted); font-size: 0.95rem; }
+
+  header { position: sticky; top: 0; z-index: 5; background: var(--bg);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  header .logo { font-weight: 800; font-size: 1.2rem; color: var(--brand-dark); background: none; border: none; padding: 8px 4px; cursor: pointer; }
+  header .logo span { margin-right: 6px; }
+  .icon-btn { background: var(--card); border: 1px solid var(--line); border-radius: 999px;
+    min-height: 48px; padding: 8px 16px; cursor: pointer; }
+
+  main { max-width: 760px; margin: 0 auto; padding: 16px 16px 40px; }
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 18px; margin-bottom: 16px; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 56px; padding: 12px 22px; border-radius: 14px; border: 2px solid transparent;
+    background: var(--brand); color: #fff; font-weight: 700; font-size: 1.05rem; cursor: pointer;
+    touch-action: manipulation; user-select: none; }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn.block { display: flex; width: 100%; }
+  .btn.secondary { background: var(--card); color: var(--brand-dark); border-color: var(--brand); }
+  .btn.ghost { background: transparent; color: var(--muted); border-color: var(--line); }
+  .btn.danger { background: var(--danger); }
+  .btn.small { min-height: 44px; padding: 8px 14px; font-size: 0.95rem; border-radius: 12px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .row > .btn { flex: 1; }
+
+  label.field { display: block; font-weight: 700; margin: 14px 0 6px; }
+  input[type=text], input[type=password], textarea {
+    width: 100%; padding: 14px; border: 2px solid var(--line); border-radius: 14px;
+    background: #fff; font-size: 1.05rem; outline: none; }
+  input:focus, textarea:focus { border-color: var(--brand); }
+  textarea { min-height: 140px; resize: vertical; }
+  .hint { font-size: 0.9rem; color: var(--muted); margin-top: 6px; }
+  .hint.ok { color: var(--brand-dark); }
+  .hint.warn { color: var(--danger); }
+
+  .chips { display: flex; gap: 10px; flex-wrap: wrap; }
+  .chip { flex: 1; min-width: 120px; min-height: 60px; border-radius: 14px; border: 2px solid var(--line);
+    background: var(--card); font-weight: 700; cursor: pointer; padding: 10px; }
+  .chip.on { border-color: var(--brand); background: var(--brand-soft); color: var(--brand-dark); }
+
+  .list { display: flex; flex-direction: column; gap: 10px; }
+  .list-item { text-align: left; width: 100%; background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 14px 16px; cursor: pointer; }
+  .list-item .title { font-weight: 800; }
+  .list-item .meta { color: var(--muted); font-size: 0.9rem; margin-top: 2px; }
+  .badge { display: inline-block; font-size: 0.8rem; padding: 2px 10px; border-radius: 999px;
+    background: var(--brand-soft); color: var(--brand-dark); margin-left: 6px; }
+  .badge.doing { background: #fff0d6; color: #8a5a00; }
+  .empty { color: var(--muted); text-align: center; padding: 20px; }
+
+  .tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+  .tab { flex: 1; min-height: 56px; border-radius: 14px; border: 2px solid var(--line);
+    background: var(--card); font-weight: 700; cursor: pointer; font-size: 1rem; }
+  .tab.on { background: var(--brand); color: #fff; border-color: var(--brand); }
+
+  .chat { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 14px; min-height: 320px; max-height: 58vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 88%; padding: 12px 16px; border-radius: 16px; white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; }
+  .msg.coach { background: var(--coach); align-self: flex-start; border-bottom-left-radius: 4px; }
+  .msg.student { background: var(--student); align-self: flex-end; border-bottom-right-radius: 4px; }
+  .msg.notice { background: var(--danger-soft); align-self: stretch; max-width: 100%; text-align: center; font-size: 0.95rem; }
+  .msg.notice.soft { background: var(--brand-soft); color: var(--brand-dark); }
+  .msg.thinking { color: var(--muted); font-style: italic; }
+  .msg .who { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 4px; font-style: normal; }
+  .msg .btn { margin-top: 8px; }
+
+  .composer { display: flex; gap: 10px; margin-top: 12px; align-items: flex-end; }
+  .composer textarea { min-height: 64px; max-height: 160px; flex: 1; }
+  .composer .btn { min-width: 96px; min-height: 64px; }
+  .mode-bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+
+  .stat { display: flex; gap: 12px; }
+  .stat .box { flex: 1; text-align: center; background: var(--brand-soft); border-radius: 14px; padding: 16px 10px; }
+  .stat .num { font-size: 2rem; font-weight: 800; color: var(--brand-dark); }
+  .stat .lab { font-size: 0.9rem; color: var(--muted); }
+
+  .quote { background: #faf6ee; border-left: 4px solid var(--accent); padding: 10px 14px; border-radius: 8px; white-space: pre-wrap; }
+
+  .keywrap { display: flex; gap: 8px; }
+  .keywrap input { flex: 1; }
+  .keywrap .btn { min-width: 72px; }
+
+  .modal-bg { position: fixed; inset: 0; background: rgba(40,30,20,0.55); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 20; }
+  .modal-bg.show { display: flex; }
+  .modal { background: var(--card); border-radius: 22px; padding: 24px; max-width: 520px; width: 100%; }
+  .modal ul { padding-left: 22px; margin: 8px 0 16px; }
+
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink); color: #fff;
+    padding: 12px 20px; border-radius: 999px; font-size: 0.95rem; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 30; max-width: 90vw; text-align: center; }
+  .toast.show { opacity: 1; }
+  .sr { position: absolute; left: -9999px; }
+  details summary { cursor: pointer; font-weight: 700; padding: 6px 0; }
+</style>
+</head>
+<body>
+<header>
+  <button class="logo" id="btn-logo" aria-label="홈으로"><span>📖</span>책친구 코치</button>
+  <button class="icon-btn" id="btn-admin">⚙️ 관리자</button>
+</header>
+
+<main>
+  <!-- 1. 홈 -->
+  <section class="screen" id="screen-home">
+    <div class="card">
+      <h2>나는 어느 학년이야?</h2>
+      <div class="chips" id="grade-chips"></div>
+      <p class="hint" id="grade-hint"></p>
+    </div>
+    <div class="card">
+      <h2>오늘 읽은 책으로 이야기해 볼까?</h2>
+      <p class="muted">읽은 내용을 내 말로 적으면, 코치가 질문을 시작해요. 10~15분이면 돼요.</p>
+      <button class="btn block" id="btn-new">📚 새 독서 시작</button>
+      <p class="hint warn" id="home-key-hint" style="display:none;"></p>
+    </div>
+    <div class="card">
+      <h2>내 독서 기록</h2>
+      <div class="list" id="session-list"></div>
+    </div>
+  </section>
+
+  <!-- 2. 읽기 기록 작성 -->
+  <section class="screen" id="screen-record">
+    <div class="card">
+      <h2>읽기 기록</h2>
+      <label class="field" for="rec-title">책 제목</label>
+      <input type="text" id="rec-title" placeholder="예: 마당을 나온 암탉" maxlength="80" autocomplete="off">
+      <label class="field" for="rec-range">오늘 읽은 범위</label>
+      <input type="text" id="rec-range" placeholder="예: 3장부터 5장까지 / 40쪽~72쪽" maxlength="80" autocomplete="off">
+      <label class="field" for="rec-summary">오늘 읽은 내용을 내 말로 (3문장 이상)</label>
+      <textarea id="rec-summary" placeholder="누가 무엇을 했는지, 어떤 일이 생겼는지, 내가 느낀 점을 내 말로 적어 봐. 책을 그대로 베끼지 않아도 돼." maxlength="2000"></textarea>
+      <p class="hint" id="rec-count">0문장</p>
+      <p class="hint warn" id="rec-error" style="display:none;"></p>
+      <div class="row" style="margin-top:16px;">
+        <button class="btn ghost" id="btn-rec-back">뒤로</button>
+        <button class="btn" id="btn-rec-save">코치와 대화하기 →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. 코치 대화 -->
+  <section class="screen" id="screen-chat">
+    <div class="card" style="padding:14px 18px;">
+      <div class="muted" id="chat-book"></div>
+    </div>
+    <div class="tabs" id="mode-tabs">
+      <button class="tab" data-mode="question">💬 질문 대화</button>
+      <button class="tab" data-mode="debate">⚖️ 토론</button>
+      <button class="tab" data-mode="ask">🙋 내가 묻기</button>
+    </div>
+    <div class="card" id="debate-setup" style="display:none;">
+      <h3>토론 준비</h3>
+      <p class="muted">이 책에 대해 네가 하고 싶은 주장을 하나 정해 봐. 코치가 정중하게 반대 입장이 되어 줄게.</p>
+      <textarea id="debate-claim" placeholder="예: 주인공이 거짓말을 한 건 잘한 일이다." maxlength="300" style="min-height:90px;"></textarea>
+      <button class="btn block" id="btn-debate-start" style="margin-top:10px;">이 주장으로 토론 시작</button>
+    </div>
+    <div id="chat-area">
+      <div class="chat" id="chat-log"></div>
+      <div class="composer">
+        <textarea id="chat-input" placeholder="여기에 내 생각을 써 봐" maxlength="1500" rows="2"></textarea>
+        <button class="btn" id="btn-send">보내기</button>
+      </div>
+    </div>
+    <div class="mode-bar">
+      <button class="btn secondary small" id="btn-debate-end" style="display:none;">토론 마치기</button>
+      <span></span>
+      <button class="btn small" id="btn-to-reflect">✏️ 한 줄 성찰 쓰러 가기</button>
+    </div>
+  </section>
+
+  <!-- 4. 한 줄 성찰 -->
+  <section class="screen" id="screen-reflect">
+    <div class="card">
+      <h2>오늘의 한 줄 성찰</h2>
+      <p class="muted">처음에 네가 쓴 글이야. 대화하고 나서 새로 하게 된 생각이 있다면 한 문장으로 적어 봐.</p>
+      <div class="quote" id="reflect-original"></div>
+      <label class="field" for="reflect-input">오늘 대화로 새로 하게 된 생각</label>
+      <textarea id="reflect-input" placeholder="예: 주인공이 거짓말한 건 나쁘다고만 생각했는데, 친구를 지키려던 마음도 있었던 것 같다." maxlength="400" style="min-height:100px;"></textarea>
+      <p class="hint warn" id="reflect-error" style="display:none;"></p>
+      <div class="row" style="margin-top:16px;">
+        <button class="btn ghost" id="btn-reflect-back">대화로 돌아가기</button>
+        <button class="btn" id="btn-reflect-save">저장하기</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4b. 저장 완료 -->
+  <section class="screen" id="screen-done">
+    <div class="card" style="text-align:center;">
+      <h2>🌱 오늘의 생각을 저장했어!</h2>
+      <div class="quote" id="done-reflection" style="text-align:left; margin:14px 0;"></div>
+      <div class="stat">
+        <div class="box"><div class="num" id="stat-books">0</div><div class="lab">읽은 책</div></div>
+        <div class="box"><div class="num" id="stat-days">0</div><div class="lab">대화한 날</div></div>
+      </div>
+      <button class="btn block" id="btn-done-home" style="margin-top:18px;">홈으로</button>
+    </div>
+  </section>
+
+  <!-- 4c. 기록 상세 보기 -->
+  <section class="screen" id="screen-detail">
+    <div class="card">
+      <h2 id="detail-title"></h2>
+      <p class="muted" id="detail-meta"></p>
+      <h3>내 말로 쓴 내용</h3>
+      <div class="quote" id="detail-summary"></div>
+      <h3 style="margin-top:14px;">한 줄 성찰</h3>
+      <div class="quote" id="detail-reflection"></div>
+      <div id="detail-chats" style="margin-top:14px;"></div>
+      <div class="row" style="margin-top:16px;">
+        <button class="btn ghost" id="btn-detail-back">홈으로</button>
+        <button class="btn secondary" id="btn-detail-continue" style="display:none;">이어서 대화하기</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. 관리자 설정 -->
+  <section class="screen" id="screen-admin">
+    <div class="card">
+      <h2>관리자 설정 (교사·학부모용)</h2>
+      <p class="muted">이 앱은 Google Gemini API 키가 있어야 코치가 대답해요. 키는 이 기기의 브라우저에만 저장되고, 코드나 다른 곳으로 보내지 않아요.</p>
+      <label class="field" for="admin-key">Gemini API 키</label>
+      <div class="keywrap">
+        <input type="password" id="admin-key" placeholder="AIza… 로 시작하는 키" autocomplete="off" spellcheck="false">
+        <button class="btn secondary" id="btn-key-toggle" aria-label="키 보이기/숨기기">👁️</button>
+      </div>
+      <p class="hint">모델: <code id="admin-model"></code></p>
+      <div class="row" style="margin-top:12px;">
+        <button class="btn" id="btn-key-save">키 저장</button>
+        <button class="btn secondary" id="btn-key-test">연결 테스트</button>
+      </div>
+      <p class="hint" id="admin-test-result" style="margin-top:10px;"></p>
+    </div>
+    <div class="card">
+      <h3>첫 실행 안내</h3>
+      <button class="btn secondary block" id="btn-notice-again">학생용 안내 다시 보기</button>
+    </div>
+    <div class="card">
+      <h3>전체 기록 삭제</h3>
+      <p class="muted">이 기기에 저장된 모든 독서 기록과 대화를 지웁니다. 되돌릴 수 없어요. (API 키는 남아요)</p>
+      <button class="btn danger block" id="btn-wipe">전체 기록 삭제</button>
+    </div>
+    <button class="btn ghost block" id="btn-admin-back">홈으로</button>
+  </section>
+</main>
+
+<!-- 첫 실행 안내 -->
+<div class="modal-bg" id="modal-notice">
+  <div class="modal">
+    <h2>📖 책친구 코치에 온 걸 환영해!</h2>
+    <p>시작하기 전에 두 가지만 알아 두자.</p>
+    <ul>
+      <li><b>AI와 나눈 대화는 Google의 AI 서비스로 전송돼요.</b> 그래서 코치가 대답할 수 있어요.</li>
+      <li><b>이름, 학교, 전화번호 같은 개인정보는 쓰지 마세요.</b> 책 이야기만 하면 돼요.</li>
+    </ul>
+    <p class="muted">읽기 기록과 성찰은 이 기기 안에만 저장돼요. 회원가입도, 순위도 없어요.</p>
+    <button class="btn block" id="btn-notice-ok">알겠어요!</button>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+'use strict';
+// ===== 모델·API 설정 (교체가 필요하면 이 부분만 바꾸면 됩니다) =====
+const MODEL_NAME = 'gemini-3.1-flash-lite';
+const API_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/' + MODEL_NAME + ':generateContent';
+const SAFETY_SETTINGS = [
+  { category: 'HARM_CATEGORY_HARASSMENT',        threshold: 'BLOCK_LOW_AND_ABOVE' },
+  { category: 'HARM_CATEGORY_HATE_SPEECH',       threshold: 'BLOCK_LOW_AND_ABOVE' },
+  { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_LOW_AND_ABOVE' },
+  { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_LOW_AND_ABOVE' }
+];
+const GENERATION_CONFIG = { temperature: 0.7, maxOutputTokens: 800, thinkingConfig: { thinkingLevel: 'LOW' } };
+
+const STORE_SETTINGS = 'bcc_settings';
+const STORE_SESSIONS = 'bcc_sessions';
+const WRAP_UP_AFTER = 8;   // 학생 답변이 이 횟수를 넘으면 코치에게 마무리 힌트를 준다
+
+// ===== 학년군 =====
+const GRADE_BANDS = {
+  e34: { label: '초등 3~4학년',
+    style: '아주 쉬운 낱말만 쓴다. 한 문장은 짧게. 답은 2~3문장을 넘기지 않는다. 질문은 "누가", "무엇을", "왜"처럼 손에 잡히게 한다.' },
+  e56: { label: '초등 5~6학년',
+    style: '일상에서 쓰는 낱말 위주로, 어려운 말은 풀어서 쓴다. 답은 2~3문장. "만약 ~였다면?" 같은 상상 질문도 좋다.' },
+  ms:  { label: '중학생',
+    style: '또래에게 말하듯 하되 존중하는 반말. 답은 3~4문장까지. "근거", "관점", "가치" 같은 말을 써도 된다. 다른 인물의 입장에서 보게 하는 질문이 좋다.' }
+};
+
+// ===== 모드 =====
+const MODES = {
+  question: { label: '질문 대화' },
+  debate:   { label: '토론' },
+  ask:      { label: '내가 묻기' }
+};
+const STAGES = [
+  { name: '사실 확인', guide: '학생이 쓴 기록 속 사건·인물에 대해 "누가, 무엇을, 어떻게"를 묻는다. 기록에 있는 말을 그대로 짚어 준다.' },
+  { name: '추론',     guide: '"왜 그랬을까", "그 인물 마음은 어땠을까"처럼 기록에 직접 안 나온 이유와 마음을 짐작하게 한다.' },
+  { name: '비판적 생각', guide: '"그 행동이 옳았을까", "다른 방법은 없었을까", "너라면 어떻게 했을까"처럼 판단과 근거를 묻는다.' },
+  { name: '내 삶에 적용', guide: '책의 상황을 학생의 경험이나 주변과 연결한다. "너에게도 비슷한 일이 있었어?", "이 책이 네게 남긴 건 뭐야?"' }
+];
+// 앱이 보내는 시작·종료 지시(화면에는 보이지 않음)
+const KICKOFF = {
+  question: '(앱) 대화를 시작해. 학생의 기록에서 구체적인 표현 하나를 짚어 주고, 지금 단계에 맞는 첫 질문을 하나만 해 줘.',
+  debate:   '(앱) 토론을 시작해. 학생의 주장을 한 줄로 확인하고, 정중하게 반대 입장에서 첫 반론 또는 근거 요구를 하나만 해 줘.',
+  ask:      '(앱) 내가 묻기 모드를 시작해. 학생에게 이 책에 대해 궁금한 것을 하나 물어보라고 짧게 권해 줘.',
+  debateEnd:'(앱) 토론을 마친다. 이제 반대 역할을 완전히 내려놓고, 학생 주장에서 좋았던 점을 2~3가지 구체적으로 짚어 줘. 학생이 실제로 한 말을 따와서 말해. 마지막에 질문은 하지 마.'
+};
+
+// ===== 시스템 프롬프트 =====
+const COMMON_RULES = [
+  '너는 "책친구 코치"야. 초등·중학생이 읽은 책을 두고 스스로 생각하도록 돕는 독서 코치다.',
+  '',
+  '# 꼭 지킬 규칙',
+  '1. 한 번에 질문은 딱 하나. 답은 질문 하나로 끝낸다. (토론 마무리 지시가 오면 질문 없이 끝낸다.)',
+  '2. 정답을 알려 주거나 요약·감상문을 대신 써 주지 않는다. 되묻고, 생각할 실마리만 준다.',
+  '3. 칭찬은 학생이 쓴 구체적인 말이나 부분을 짚어서 한다. "잘했어", "좋아", "훌륭해" 같은 빈 칭찬은 쓰지 않는다.',
+  '4. 짧거나 성의 없는 답에도 절대 나무라지 않는다. 더 쉽고 작은 질문으로 내려간다.',
+  '5. 너는 이 책을 읽지 않았다. 아래 "학생의 독서 기록"과 지금까지의 대화에 나온 내용만 근거로 삼는다. 책 내용을 아는 척 지어내지 않는다. 모르는 부분은 학생에게 물어본다.',
+  '6. 책이나 독서와 상관없는 이야기로 흐르면 한마디로 받아 주고, 부드럽게 책 이야기로 돌아온다.',
+  '7. 학생이 이름·학교·반·연락처 같은 개인정보를 쓰면, 여기서는 그런 정보를 쓰지 않아도 된다고 짧게 알려 주고 대화를 이어 간다.',
+  '8. 학생이 힘든 마음(죽고 싶다, 너무 괴롭다 등)이나 위험한 상황(맞았다, 무섭다, 괴롭힘 등)을 말하면 질문과 토론을 멈춘다. 마음을 따뜻하게 받아 주고 "믿을 수 있는 어른(선생님, 부모님)에게 꼭 이야기해 줘"라고 안내한다. 이때는 질문으로 끝내지 않는다.',
+  '9. 다정한 반말. 이모지·마크다운·제목·번호 목록 없이 평범한 문장으로만 쓴다.'
+].join('\n');
+
+const COMMON_EXAMPLES = [
+  '학생: 몰라요',
+  '코치: 괜찮아, 방금 건 어려운 질문이었어. 그럼 더 쉬운 것부터. 오늘 읽은 부분에서 제일 기억에 남는 장면 하나만 말해 줄래?',
+  '',
+  '학생: 책 읽기 싫어요. 다 싫어요. 그냥 죽고 싶어요.',
+  '코치: 그 말을 해 줘서 고마워. 지금 마음이 많이 무거운 것 같아. 이건 책보다 훨씬 중요한 이야기야. 선생님이나 부모님처럼 믿을 수 있는 어른에게 지금 꼭 이야기해 줘. 혼자 견디지 않아도 돼.'
+].join('\n');
+
+const MODE_PROMPTS = {
+  question: {
+    block: function (ctx) {
+      var s = STAGES[ctx.stage];
+      var lines = [
+        '질문 대화 모드. 학생의 기록을 바탕으로 질문한다. 단계는 사실 확인 → 추론 → 비판적 생각 → 내 삶에 적용 순서로 깊어진다.',
+        '지금 단계: ' + (ctx.stage + 1) + '단계 "' + s.name + '". ' + s.guide,
+        '이 단계에 맞는 질문 하나만 한다. 앞 단계로 돌아가도 되지만 뒤 단계로 건너뛰지 않는다.'
+      ];
+      if (ctx.wrapUp) lines.push('마무리 단계: 오늘 학생이 한 생각 중 구체적인 부분 하나를 짚어 주고, 성찰 한 줄을 쓰도록 이끄는 마지막 질문 하나만 한다.');
+      return lines.join('\n');
+    },
+    examples: [
+      '학생: 주인공이 친구를 도와줬는데 나중에 배신당했어요.',
+      '코치: "배신당했다"는 말을 골랐구나. 네가 배신이라고 느낀 장면이 어디였어? 그때 친구는 무슨 말을 했어?',
+      '',
+      '학생: 근데 오늘 급식 뭐예요?',
+      '코치: 급식 궁금하지! 나는 급식표는 몰라. 그런데 네 기록에 "동생이 울었다"고 썼잖아. 동생은 왜 울었을까?'
+    ].join('\n')
+  },
+  debate: {
+    block: function (ctx) {
+      var lines = [
+        '토론 모드. 학생의 주장: "' + ctx.claim + '"',
+        '너는 정중하게 반대 입장을 맡는다. 근거를 요구하고, 반론을 하나씩 낸다. 반대 근거는 학생 기록과 대화에 나온 내용, 또는 누구나 아는 상식에서만 가져온다. 책 내용을 지어내서 반박하지 않는다.',
+        '학생을 이기는 게 목표가 아니다. 학생이 더 좋은 근거를 찾게 돕는다. 학생을 깎아내리는 말은 하지 않는다.'
+      ];
+      if (ctx.ending) lines.push('토론 종료 지시가 왔다: 반대 역할을 내려놓고 학생 주장의 좋았던 점을 구체적으로 짚는다. 질문으로 끝내지 않는다.');
+      else if (ctx.wrapUp) lines.push('마무리 단계: 반론은 이번이 마지막. 학생이 가장 세게 말한 근거 하나를 다시 물어 확인한다.');
+      return lines.join('\n');
+    },
+    examples: [
+      '학생: 주인공이 거짓말한 건 잘한 거예요. 친구를 지켰으니까요.',
+      '코치: "친구를 지켰다"는 근거를 분명히 말했네. 그런데 나는 다르게 볼게. 그 거짓말이 들켰다면 친구가 더 곤란해지지 않았을까? 네 기록에는 들켰는지 안 들켰는지가 없던데, 어떻게 됐어?',
+      '',
+      '학생: (토론 마치기)',
+      '코치: 토론 재밌었어. 네 주장에서 좋았던 점 두 가지를 말할게. 첫째, "친구를 지켰다"는 근거를 끝까지 흔들리지 않고 지켰어. 둘째, 내가 "들켰으면 어쩌냐"고 했을 때 "그래도 말할 순간을 골랐다"는 새 근거를 찾아냈지. 근거를 더해 가는 힘이 토론에서 제일 중요한 거야.'
+    ].join('\n')
+  },
+  ask: {
+    block: function (ctx) {
+      var lines = [
+        '내가 묻기 모드. 학생이 책에 대해 궁금한 것을 묻는다. 바로 답하지 않는다.',
+        '먼저 "너는 어떻게 생각해?"처럼 학생의 생각을 묻는다. 학생이 생각을 말하면 그 생각의 구체적인 부분을 짚어 주고, 생각할 실마리(어느 장면을 다시 읽어 볼지, 무엇과 비교해 볼지, 어떤 인물 입장에서 볼지) 하나를 준다.',
+        '너는 책 내용을 모르므로 답을 지어내지 않는다. 학생이 이미 말한 내용에서 실마리를 찾는다.'
+      ];
+      if (ctx.wrapUp) lines.push('마무리 단계: 학생이 오늘 스스로 찾아낸 생각 하나를 짚어 주고, 마지막 실마리 하나로 정리한다.');
+      return lines.join('\n');
+    },
+    examples: [
+      '학생: 주인공은 왜 집을 나갔어요?',
+      '코치: 좋은 궁금증이야. 나는 이 책을 안 읽어서 답은 몰라. 너는 어떻게 생각해? 집을 나가기 전에 무슨 일이 있었어?',
+      '',
+      '학생: 저는 3학년 2반 김민준인데요, 주인공 이름은 뭐예요?',
+      '코치: 여기서는 이름이나 반은 안 써도 돼, 안 써도 이야기할 수 있어. 주인공 이름은 나도 몰라. 네 기록에는 "그 아이"라고 썼던데, 책에서는 뭐라고 부르는 것 같아?'
+    ].join('\n')
+  }
+};
+
+function buildSystemPrompt(session, mode, ctx) {
+  var grade = GRADE_BANDS[session.gradeBand] || GRADE_BANDS.e56;
+  var mp = MODE_PROMPTS[mode];
+  return [
+    COMMON_RULES,
+    '',
+    '# 학생 학년군: ' + grade.label,
+    grade.style,
+    '',
+    '# 학생의 독서 기록 (이 책에 대해 네가 아는 전부)',
+    '책 제목: ' + session.title,
+    '오늘 읽은 범위: ' + session.range,
+    '학생이 내 말로 쓴 내용:',
+    session.summary,
+    '',
+    '# 지금 모드',
+    mp.block(ctx),
+    '',
+    '# 좋은 응답 예시',
+    mp.examples,
+    '',
+    COMMON_EXAMPLES
+  ].join('\n');
+}
+
+// ===== 저장 =====
+var settings = { apiKey: '', gradeBand: '', noticeSeen: false };
+var sessions = [];
+function loadStore() {
+  try { var s = JSON.parse(localStorage.getItem(STORE_SETTINGS) || '{}'); if (s && typeof s === 'object') settings = Object.assign(settings, s); } catch (e) {}
+  try { var l = JSON.parse(localStorage.getItem(STORE_SESSIONS) || '[]'); if (Array.isArray(l)) sessions = l; } catch (e) {}
+}
+function saveSettings() { try { localStorage.setItem(STORE_SETTINGS, JSON.stringify(settings)); } catch (e) { toast('저장 공간에 쓸 수 없어요. 브라우저 설정을 확인해 주세요.'); } }
+function saveSessions() { try { localStorage.setItem(STORE_SESSIONS, JSON.stringify(sessions)); } catch (e) { toast('저장 공간에 쓸 수 없어요. 브라우저 설정을 확인해 주세요.'); } }
+
+// ===== Gemini 호출 (외부로 나가는 요청은 이 함수 하나뿐) =====
+function CoachError(kind, detail) { this.kind = kind; this.detail = detail || ''; }
+CoachError.prototype = Object.create(Error.prototype);
+
+var ERROR_TEXT = {
+  nokey:   '아직 AI 코치 열쇠(API 키)가 없어요. 선생님께 "관리자 설정에서 키를 넣어 주세요"라고 알려 주세요.',
+  key:     'AI 코치 열쇠(API 키)가 맞지 않아요. 선생님께 알려 주세요.',
+  network: '인터넷이 연결되지 않은 것 같아요. 연결을 확인하고 다시 눌러 봐. 계속 안 되면 선생님께 알려 주세요.',
+  quota:   '오늘은 AI 코치를 너무 많이 불렀어요. 조금 쉬었다가 다시 해 보자. 계속 안 되면 선생님께 알려 주세요.',
+  busy:    'AI 코치가 지금 바빠요. 잠깐 뒤에 다시 눌러 봐.',
+  blocked: '그 이야기는 여기서 나누기 어려워. 우리 다시 책 이야기로 돌아가 볼까?',
+  empty:   '코치가 대답을 만들지 못했어. 다시 한 번 눌러 봐.'
+};
+
+async function callGemini(systemText, contents, config) {
+  if (!settings.apiKey) throw new CoachError('nokey');
+  var body = {
+    system_instruction: { parts: [{ text: systemText }] },
+    contents: contents,
+    safetySettings: SAFETY_SETTINGS,
+    generationConfig: JSON.parse(JSON.stringify(config || GENERATION_CONFIG))
+  };
+  var data = await postOnce(body);
+  return extractText(data);
+}
+
+async function postOnce(body, isRetry) {
+  var res;
+  try {
+    res = await fetch(API_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': settings.apiKey },
+      body: JSON.stringify(body)
+    });
+  } catch (e) { throw new CoachError('network', String(e)); }
+
+  if (res.ok) {
+    try { return await res.json(); } catch (e) { throw new CoachError('empty'); }
+  }
+  var errMsg = '';
+  try { var j = await res.json(); errMsg = (j.error && j.error.message) || ''; } catch (e) {}
+  if (res.status === 400 && !isRetry && body.generationConfig && body.generationConfig.thinkingConfig && /think/i.test(errMsg)) {
+    // 모델이 thinkingConfig를 받지 않는 경우: 그 필드만 빼고 한 번 더
+    delete body.generationConfig.thinkingConfig;
+    return postOnce(body, true);
+  }
+  if (res.status === 400 || res.status === 401 || res.status === 403) throw new CoachError('key', errMsg);
+  if (res.status === 429) throw new CoachError('quota', errMsg);
+  if (res.status === 404) throw new CoachError('key', '모델을 찾을 수 없음: ' + errMsg);
+  throw new CoachError('busy', res.status + ' ' + errMsg);
+}
+
+function extractText(data) {
+  if (data.promptFeedback && data.promptFeedback.blockReason) throw new CoachError('blocked', data.promptFeedback.blockReason);
+  var cand = data.candidates && data.candidates[0];
+  if (!cand) throw new CoachError('blocked');
+  if (cand.finishReason === 'SAFETY' || cand.finishReason === 'PROHIBITED_CONTENT' || cand.finishReason === 'BLOCKLIST') throw new CoachError('blocked', cand.finishReason);
+  var parts = (cand.content && cand.content.parts) || [];
+  var text = parts.filter(function (p) { return p.text && !p.thought; }).map(function (p) { return p.text; }).join('').trim();
+  if (!text) throw new CoachError('empty', cand.finishReason || '');
+  return text;
+}
+
+// ===== 상태 =====
+var current = null;           // 지금 진행 중인 세션
+var currentMode = 'question';
+var busy = false;
+
+// ===== 유틸 =====
+function $(id) { return document.getElementById(id); }
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(function (s) { s.classList.toggle('active', s.id === id); });
+  window.scrollTo(0, 0);
+}
+var toastTimer = null;
+function toast(msg) {
+  var t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2600);
+}
+function countSentences(text) {
+  return text.split(/[.!?。\n]+/).map(function (s) { return s.trim(); }).filter(function (s) { return s.length >= 2; }).length;
+}
+function fmtDate(iso) {
+  var d = new Date(iso);
+  return d.getFullYear() + '.' + (d.getMonth() + 1) + '.' + d.getDate();
+}
+function dayKey(iso) { var d = new Date(iso); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function findSession(id) { for (var i = 0; i < sessions.length; i++) if (sessions[i].id === id) return sessions[i]; return null; }
+function visibleStudentTurns(chat) { return chat.filter(function (m) { return m.role === 'user' && !m.hidden; }).length; }
+// 단계 계산에는 어느 정도 생각을 담은 답만 센다 ("몰라요" 같은 짧은 답으로는 단계가 올라가지 않게)
+function substantiveTurns(chat) { return chat.filter(function (m) { return m.role === 'user' && !m.hidden && m.text.trim().length >= 8; }).length; }
+
+// 전송 전 간단 검사 (모델 규칙과 별개로 앱에서 한 번 더)
+var PII_RE = /(0\d{1,2}[-\s.]?\d{3,4}[-\s.]?\d{4})|([\w.+-]+@[\w-]+\.[\w.]+)/;
+var CRISIS_RE = /(죽고\s*싶|자살|자해|죽어\s*버리|살기\s*싫|사라지고\s*싶)/;
+var CRISIS_TEXT = '그 말을 해 줘서 고마워. 지금 마음이 많이 무거운 것 같아. 이건 책보다 훨씬 중요한 이야기야. 선생님이나 부모님처럼 믿을 수 있는 어른에게 지금 꼭 이야기해 줘. 혼자 견디지 않아도 돼.';
+
+// ===== 홈 =====
+function renderHome() {
+  var chips = $('grade-chips'); chips.innerHTML = '';
+  Object.keys(GRADE_BANDS).forEach(function (k) {
+    var b = document.createElement('button');
+    b.className = 'chip' + (settings.gradeBand === k ? ' on' : '');
+    b.textContent = GRADE_BANDS[k].label;
+    b.onclick = function () { settings.gradeBand = k; saveSettings(); renderHome(); };
+    chips.appendChild(b);
+  });
+  $('grade-hint').textContent = settings.gradeBand ? '학년에 맞게 코치가 말해 줄게.' : '먼저 학년을 골라 줘.';
+  var kh = $('home-key-hint');
+  if (!settings.apiKey) { kh.style.display = ''; kh.textContent = ERROR_TEXT.nokey; } else { kh.style.display = 'none'; }
+
+  var list = $('session-list'); list.innerHTML = '';
+  if (!sessions.length) { list.innerHTML = '<div class="empty">아직 기록이 없어. 첫 책 이야기를 시작해 보자!</div>'; return; }
+  sessions.slice().sort(function (a, b) { return b.createdAt.localeCompare(a.createdAt); }).forEach(function (s) {
+    var b = document.createElement('button');
+    b.className = 'list-item';
+    var badge = s.completedAt ? '<span class="badge">성찰 완료</span>' : '<span class="badge doing">대화 중</span>';
+    b.innerHTML = '<div class="title"></div><div class="meta"></div>';
+    b.querySelector('.title').textContent = s.title;
+    b.querySelector('.title').insertAdjacentHTML('beforeend', badge);
+    b.querySelector('.meta').textContent = fmtDate(s.createdAt) + ' · ' + s.range + ' · ' + (GRADE_BANDS[s.gradeBand] ? GRADE_BANDS[s.gradeBand].label : '');
+    b.onclick = function () { openDetail(s.id); };
+    list.appendChild(b);
+  });
+}
+
+// ===== 읽기 기록 =====
+function openRecord() {
+  if (!settings.gradeBand) { toast('먼저 학년을 골라 줘.'); return; }
+  $('rec-title').value = ''; $('rec-range').value = ''; $('rec-summary').value = '';
+  $('rec-error').style.display = 'none'; updateSentenceCount();
+  showScreen('screen-record');
+}
+function updateSentenceCount() {
+  var n = countSentences($('rec-summary').value);
+  var el = $('rec-count');
+  el.textContent = n + '문장' + (n >= 3 ? ' — 좋아, 충분해!' : ' (3문장 이상 써 보자)');
+  el.className = 'hint' + (n >= 3 ? ' ok' : '');
+}
+function saveRecord() {
+  var title = $('rec-title').value.trim(), range = $('rec-range').value.trim(), summary = $('rec-summary').value.trim();
+  var err = $('rec-error');
+  var msg = '';
+  if (!title) msg = '책 제목을 적어 줘.';
+  else if (!range) msg = '오늘 읽은 범위를 적어 줘. (예: 3장까지)';
+  else if (countSentences(summary) < 3) msg = '내 말로 3문장 이상 써 보자. 짧아도 괜찮아, 세 문장이면 돼.';
+  else if (PII_RE.test(summary)) msg = '전화번호나 이메일 같은 개인정보는 지워 줘.';
+  if (msg) { err.textContent = msg; err.style.display = ''; return; }
+  err.style.display = 'none';
+  current = {
+    id: uid(), createdAt: new Date().toISOString(), gradeBand: settings.gradeBand,
+    title: title, range: range, summary: summary,
+    chats: { question: [], debate: [], ask: [] },
+    debateClaim: '', debateEnded: false, reflection: '', completedAt: null
+  };
+  sessions.push(current); saveSessions();
+  openChat('question');
+}
+
+// ===== 코치 대화 =====
+function openChat(mode) {
+  currentMode = mode || 'question';
+  $('chat-book').textContent = '📖 ' + current.title + ' · ' + current.range + ' · ' + GRADE_BANDS[current.gradeBand].label;
+  showScreen('screen-chat');
+  renderChat();
+  maybeKickoff();
+}
+function renderChat() {
+  document.querySelectorAll('#mode-tabs .tab').forEach(function (t) { t.classList.toggle('on', t.dataset.mode === currentMode); });
+  var isDebate = currentMode === 'debate';
+  var needClaim = isDebate && !current.debateClaim;
+  $('debate-setup').style.display = needClaim ? '' : 'none';
+  $('chat-area').style.display = needClaim ? 'none' : '';
+  $('btn-debate-end').style.display = (isDebate && current.debateClaim && !current.debateEnded) ? '' : 'none';
+  var ended = isDebate && current.debateEnded;
+  $('chat-input').disabled = ended; $('btn-send').disabled = ended || busy;
+  $('chat-input').placeholder = ended ? '토론이 끝났어. 다른 탭에서 이야기하거나 성찰을 써 보자.' : '여기에 내 생각을 써 봐';
+
+  var log = $('chat-log'); log.innerHTML = '';
+  current.chats[currentMode].forEach(function (m) {
+    if (m.hidden) return;
+    addBubble(m.role === 'user' ? 'student' : 'coach', m.text, false);
+  });
+  scrollChat();
+}
+function addBubble(kind, text, scroll) {
+  var log = $('chat-log');
+  var d = document.createElement('div');
+  d.className = 'msg ' + kind;
+  if (kind === 'coach') { var w = document.createElement('span'); w.className = 'who'; w.textContent = '코치'; d.appendChild(w); }
+  d.appendChild(document.createTextNode(text));
+  log.appendChild(d);
+  if (scroll !== false) scrollChat();
+  return d;
+}
+function addNotice(text, retryFn, soft) {
+  var d = addBubble('notice' + (soft ? ' soft' : ''), text);
+  if (retryFn) {
+    var b = document.createElement('button'); b.className = 'btn small secondary'; b.textContent = '다시 보내기';
+    b.onclick = function () { d.remove(); retryFn(); };
+    d.appendChild(document.createElement('br')); d.appendChild(b);
+  }
+  scrollChat();
+  return d;
+}
+function scrollChat() { var log = $('chat-log'); log.scrollTop = log.scrollHeight; }
+
+function maybeKickoff() {
+  var chat = current.chats[currentMode];
+  if (currentMode === 'debate' && !current.debateClaim) return;
+  if (!chat.length) { pushHidden(KICKOFF[currentMode]); requestCoach(); return; }
+  // 마지막이 학생(또는 앱) 차례면 코치 응답이 아직 없는 것 → 다시 요청 (키 없음·네트워크 오류 뒤 이어서 할 때)
+  if (chat[chat.length - 1].role === 'user') requestCoach();
+}
+function pushHidden(text) { current.chats[currentMode].push({ role: 'user', text: text, hidden: true }); saveSessions(); }
+
+function buildContext(mode) {
+  var chat = current.chats[mode];
+  var turns = visibleStudentTurns(chat);
+  var ctx = { wrapUp: turns >= WRAP_UP_AFTER, stage: Math.min(3, Math.floor(substantiveTurns(chat) / 2)), claim: current.debateClaim, ending: false };
+  if (mode === 'debate') {
+    var last = chat[chat.length - 1];
+    ctx.ending = !!(last && last.hidden && last.text === KICKOFF.debateEnd);
+  }
+  return ctx;
+}
+function toContents(chat) {
+  // 같은 역할이 연달아 오면 하나로 합친다 (전송 실패 뒤 다시 보낼 때 등)
+  var out = [];
+  chat.forEach(function (m) {
+    var last = out[out.length - 1];
+    if (last && last.role === m.role) last.parts[0].text += '\n' + m.text;
+    else out.push({ role: m.role, parts: [{ text: m.text }] });
+  });
+  return out;
+}
+
+async function requestCoach() {
+  if (busy) return;
+  var mode = currentMode, sess = current;
+  var chat = sess.chats[mode];
+  busy = true; $('btn-send').disabled = true;
+  var thinking = addBubble('coach thinking', '코치가 생각하는 중…');
+  try {
+    var sys = buildSystemPrompt(sess, mode, buildContext(mode));
+    var text = await callGemini(sys, toContents(chat));
+    chat.push({ role: 'model', text: text }); saveSessions();
+    thinking.remove();
+    if (current === sess && currentMode === mode) addBubble('coach', text);
+  } catch (e) {
+    thinking.remove();
+    var kind = (e instanceof CoachError) ? e.kind : 'busy';
+    if (current === sess && currentMode === mode) {
+      var canRetry = (kind === 'network' || kind === 'busy' || kind === 'empty' || kind === 'quota');
+      addNotice(ERROR_TEXT[kind] || ERROR_TEXT.busy, canRetry ? requestCoach : null, kind === 'blocked');
+    }
+    if (kind === 'blocked') {
+      // 차단된 학생 메시지는 대화 기록에서 빼서 다음 요청이 다시 막히지 않게 한다
+      var lastIdx = chat.length - 1;
+      if (lastIdx >= 0 && chat[lastIdx].role === 'user' && !chat[lastIdx].hidden) { chat.splice(lastIdx, 1); saveSessions(); }
+    }
+  } finally {
+    busy = false;
+    if (current === sess && currentMode === mode) $('btn-send').disabled = (mode === 'debate' && sess.debateEnded);
+  }
+}
+
+function sendStudent() {
+  if (busy) return;
+  var input = $('chat-input');
+  var text = input.value.trim();
+  if (!text) return;
+  if (currentMode === 'debate' && current.debateEnded) return;
+  if (PII_RE.test(text)) { addNotice('전화번호나 이메일 같은 개인정보는 여기 쓰지 말자. 지우고 다시 보내 줘.'); return; }
+  input.value = '';
+  current.chats[currentMode].push({ role: 'user', text: text }); saveSessions();
+  addBubble('student', text);
+  if (CRISIS_RE.test(text)) {
+    // 모델을 부르기 전에 앱이 먼저 고정 안내를 보여 준다
+    current.chats[currentMode].push({ role: 'model', text: CRISIS_TEXT }); saveSessions();
+    addBubble('coach', CRISIS_TEXT);
+    return;
+  }
+  requestCoach();
+}
+
+function startDebate() {
+  var claim = $('debate-claim').value.trim();
+  if (claim.length < 5) { toast('주장을 한 문장으로 적어 줘.'); return; }
+  if (PII_RE.test(claim)) { toast('개인정보는 쓰지 말자.'); return; }
+  current.debateClaim = claim; saveSessions();
+  // 학생 주장을 대화 첫 줄로 보여 준다
+  current.chats.debate.push({ role: 'user', text: '내 주장: ' + claim });
+  renderChat();
+  pushHidden(KICKOFF.debate);
+  requestCoach();
+}
+function endDebate() {
+  if (busy || current.debateEnded) return;
+  if (visibleStudentTurns(current.chats.debate) < 2) { toast('반론에 한 번은 답하고 나서 마쳐 보자.'); return; }
+  current.debateEnded = true; saveSessions();
+  pushHidden(KICKOFF.debateEnd);
+  renderChat();
+  requestCoach();
+}
+
+// ===== 성찰 =====
+function openReflect() {
+  $('reflect-original').textContent = current.summary;
+  $('reflect-input').value = current.reflection || '';
+  $('reflect-error').style.display = 'none';
+  showScreen('screen-reflect');
+}
+function saveReflection() {
+  var text = $('reflect-input').value.trim();
+  var err = $('reflect-error');
+  if (text.length < 5) { err.textContent = '한 문장이면 돼. 오늘 새로 든 생각을 적어 봐.'; err.style.display = ''; return; }
+  if (PII_RE.test(text)) { err.textContent = '개인정보는 쓰지 말자.'; err.style.display = ''; return; }
+  current.reflection = text; current.completedAt = new Date().toISOString(); saveSessions();
+  $('done-reflection').textContent = '“' + text + '”';
+  var st = stats(); $('stat-books').textContent = st.books; $('stat-days').textContent = st.days;
+  showScreen('screen-done');
+}
+function stats() {
+  var books = {}, days = {};
+  sessions.forEach(function (s) { books[s.title.trim()] = 1; if (s.completedAt) days[dayKey(s.completedAt)] = 1; });
+  return { books: Object.keys(books).length, days: Object.keys(days).length };
+}
+
+// ===== 상세 보기 =====
+function openDetail(id) {
+  var s = findSession(id); if (!s) return;
+  $('detail-title').textContent = s.title;
+  $('detail-meta').textContent = fmtDate(s.createdAt) + ' · ' + s.range + ' · ' + (GRADE_BANDS[s.gradeBand] ? GRADE_BANDS[s.gradeBand].label : '');
+  $('detail-summary').textContent = s.summary;
+  $('detail-reflection').textContent = s.reflection || '(아직 안 썼어)';
+  var wrap = $('detail-chats'); wrap.innerHTML = '';
+  Object.keys(MODES).forEach(function (m) {
+    var msgs = (s.chats[m] || []).filter(function (x) { return !x.hidden; });
+    if (!msgs.length) return;
+    var det = document.createElement('details');
+    var sum = document.createElement('summary'); sum.textContent = MODES[m].label + ' 대화 (' + msgs.length + ')'; det.appendChild(sum);
+    var box = document.createElement('div'); box.className = 'chat'; box.style.minHeight = '0';
+    msgs.forEach(function (x) {
+      var d = document.createElement('div'); d.className = 'msg ' + (x.role === 'user' ? 'student' : 'coach'); d.textContent = x.text; box.appendChild(d);
+    });
+    det.appendChild(box); wrap.appendChild(det);
+  });
+  var cont = $('btn-detail-continue');
+  cont.style.display = s.completedAt ? 'none' : '';
+  cont.onclick = function () { current = s; openChat('question'); };
+  showScreen('screen-detail');
+}
+
+// ===== 관리자 =====
+function openAdmin() {
+  $('admin-key').value = settings.apiKey || '';
+  $('admin-key').type = 'password';
+  $('admin-model').textContent = MODEL_NAME;
+  $('admin-test-result').textContent = '';
+  resetWipe();
+  showScreen('screen-admin');
+}
+function saveKey() {
+  settings.apiKey = $('admin-key').value.trim(); saveSettings();
+  toast(settings.apiKey ? '키를 저장했어요.' : '키를 지웠어요.');
+}
+async function testKey() {
+  var out = $('admin-test-result');
+  var typed = $('admin-key').value.trim();
+  if (typed !== settings.apiKey) { settings.apiKey = typed; saveSettings(); }
+  if (!settings.apiKey) { out.className = 'hint warn'; out.textContent = '먼저 키를 입력해 주세요.'; return; }
+  out.className = 'hint'; out.textContent = '연결 확인 중…';
+  $('btn-key-test').disabled = true;
+  try {
+    var text = await callGemini('한국어로 "연결 성공"이라고만 답해.', [{ role: 'user', parts: [{ text: '안녕' }] }],
+      { temperature: 0, maxOutputTokens: 200, thinkingConfig: { thinkingLevel: 'LOW' } });
+    out.className = 'hint ok'; out.textContent = '✅ 연결 성공 (' + MODEL_NAME + '): ' + text.slice(0, 40);
+  } catch (e) {
+    var kind = (e instanceof CoachError) ? e.kind : 'busy';
+    var human = { nokey: '키가 없습니다.', key: '키가 잘못되었거나 이 모델을 쓸 권한이 없습니다.', network: '네트워크에 연결할 수 없습니다.', quota: '사용량이 초과되었습니다(429).', busy: '서버가 응답하지 않습니다.', blocked: '연결은 되었으나 응답이 필터링되었습니다.', empty: '연결은 되었으나 빈 응답입니다.' }[kind];
+    out.className = 'hint warn'; out.textContent = '❌ ' + human + (e.detail ? ' — ' + String(e.detail).slice(0, 160) : '');
+  } finally { $('btn-key-test').disabled = false; }
+}
+var wipeArmed = null;
+function resetWipe() { clearTimeout(wipeArmed); wipeArmed = null; $('btn-wipe').textContent = '전체 기록 삭제'; }
+function wipeAll() {
+  if (!wipeArmed) {
+    $('btn-wipe').textContent = '정말 지울까요? 한 번 더 누르면 삭제됩니다';
+    wipeArmed = setTimeout(resetWipe, 6000);
+    return;
+  }
+  sessions = []; saveSessions(); current = null; resetWipe();
+  toast('모든 기록을 지웠어요.');
+}
+
+// ===== 이벤트 연결 =====
+function bind() {
+  $('btn-logo').onclick = function () { renderHome(); showScreen('screen-home'); };
+  $('btn-admin').onclick = openAdmin;
+  $('btn-new').onclick = openRecord;
+  $('rec-summary').oninput = updateSentenceCount;
+  $('btn-rec-back').onclick = function () { renderHome(); showScreen('screen-home'); };
+  $('btn-rec-save').onclick = saveRecord;
+  document.querySelectorAll('#mode-tabs .tab').forEach(function (t) {
+    t.onclick = function () { if (busy) { toast('코치가 대답하는 동안 잠깐만 기다려 줘.'); return; } currentMode = t.dataset.mode; renderChat(); maybeKickoff(); };
+  });
+  $('btn-send').onclick = sendStudent;
+  $('chat-input').addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendStudent(); } });
+  $('btn-debate-start').onclick = startDebate;
+  $('btn-debate-end').onclick = endDebate;
+  $('btn-to-reflect').onclick = function () { if (busy) { toast('코치가 대답하는 동안 잠깐만 기다려 줘.'); return; } openReflect(); };
+  $('btn-reflect-back').onclick = function () { openChat(currentMode); };
+  $('btn-reflect-save').onclick = saveReflection;
+  $('btn-done-home').onclick = function () { current = null; renderHome(); showScreen('screen-home'); };
+  $('btn-detail-back').onclick = function () { renderHome(); showScreen('screen-home'); };
+  $('btn-admin-back').onclick = function () { renderHome(); showScreen('screen-home'); };
+  $('btn-key-toggle').onclick = function () { var k = $('admin-key'); k.type = k.type === 'password' ? 'text' : 'password'; };
+  $('btn-key-save').onclick = saveKey;
+  $('btn-key-test').onclick = testKey;
+  $('btn-wipe').onclick = wipeAll;
+  $('btn-notice-again').onclick = function () { $('modal-notice').classList.add('show'); };
+  $('btn-notice-ok').onclick = function () { settings.noticeSeen = true; saveSettings(); $('modal-notice').classList.remove('show'); };
+}
+
+function init() {
+  loadStore();
+  bind();
+  renderHome();
+  showScreen('screen-home');
+  if (!settings.noticeSeen) $('modal-notice').classList.add('show');
+}
+init();
+</script>
+</body>
+</html>
